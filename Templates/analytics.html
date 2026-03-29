@@ -1,0 +1,343 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+
+.logs-card {
+    background: #142850;
+    padding: 30px;
+    border-radius: 10px;
+    margin-top: 20px;
+}
+
+/* ── Top bar: title + filter ── */
+.top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-bottom: 18px;
+}
+
+.top-bar h2 {
+    margin: 0;
+}
+
+.filter-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.filter-row label {
+    font-weight: bold;
+    font-size: 14px;
+    color: #a0c8f0;
+}
+
+.filter-row select {
+    background: #0d1f3c;
+    color: white;
+    border: 1px solid #2f4f8f;
+    padding: 7px 14px;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.filter-row select:focus {
+    outline: none;
+    border-color: #4cc9f0;
+}
+
+/* ── Stats summary bar ── */
+.stats-bar {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+}
+
+.stat-pill {
+    background: #0d1f3c;
+    border: 1px solid #2f4f8f;
+    border-radius: 20px;
+    padding: 5px 16px;
+    font-size: 13px;
+    color: #a0c8f0;
+}
+
+.stat-pill b {
+    color: #4cc9f0;
+}
+
+/* ── Table ── */
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th {
+    background: #1c3b70;
+    padding: 12px 14px;
+    text-align: left;
+    font-size: 13px;
+    color: #cce6ff;
+    white-space: nowrap;
+}
+
+td {
+    padding: 11px 14px;
+    border-bottom: 1px solid #1e3560;
+    font-size: 13px;
+    vertical-align: middle;
+}
+
+tr:hover td {
+    background: #1b2e57;
+}
+
+/* ── Algorithm badge ── */
+.algo-badge {
+    display: inline-block;
+    padding: 3px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+.badge-RSA       { background:#1c4a8a; color:#7ec8f5; border:1px solid #2f6ab0; }
+.badge-ECC       { background:#1a4a3a; color:#4cf0a0; border:1px solid #2a7a5a; }
+.badge-AES       { background:#4a3a1a; color:#f0c84c; border:1px solid #7a6a2a; }
+.badge-KYBER     { background:#3a1a4a; color:#d04cf0; border:1px solid #6a2a7a; }
+.badge-DILITHIUM { background:#4a1a2a; color:#f04c7c; border:1px solid #7a2a4a; }
+
+/* ── Encryption time chip ── */
+.time-chip {
+    background: #0d1f3c;
+    border: 1px solid #2f4f8f;
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-family: monospace;
+    font-size: 12px;
+    color: #4cc9f0;
+    white-space: nowrap;
+}
+
+/* ── Delete button ── */
+.btn-delete {
+    background: transparent;
+    border: 1px solid #c0392b;
+    color: #e74c3c;
+    padding: 4px 12px;
+    border-radius: 5px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: 0.2s;
+    white-space: nowrap;
+}
+
+.btn-delete:hover {
+    background: #c0392b;
+    color: white;
+}
+
+/* ── Empty state ── */
+.empty-state {
+    text-align: center;
+    padding: 40px;
+    color: #4a6a9a;
+    font-size: 15px;
+}
+
+/* ── No-results row ── */
+#no-results {
+    display: none;
+    text-align: center;
+    color: #4a6a9a;
+    padding: 30px;
+    font-size: 14px;
+}
+</style>
+
+
+<!-- Top bar -->
+<div class="top-bar">
+    <h2>📊 Performance Logs</h2>
+
+    <!-- ✅ Filter by algorithm -->
+    <div class="filter-row">
+        <label>🔎 Filter:</label>
+        <select id="algoFilter" onchange="filterTable()">
+            <option value="ALL">All Algorithms</option>
+            <option value="RSA">RSA</option>
+            <option value="ECC">ECC</option>
+            <option value="AES">AES</option>
+            <option value="KYBER">Kyber</option>
+            <option value="DILITHIUM">Dilithium</option>
+        </select>
+
+        <label>Sort by:</label>
+        <select id="sortBy" onchange="filterTable()">
+            <option value="date">Date (Newest)</option>
+            <option value="time_desc">Enc. Time (Slowest)</option>
+            <option value="time_asc">Enc. Time (Fastest)</option>
+            <option value="size_desc">Msg Size (Largest)</option>
+        </select>
+    </div>
+</div>
+
+<!-- Stats summary bar -->
+<div class="stats-bar" id="statsBar"></div>
+
+<div class="logs-card">
+
+    {% if experiments %}
+
+    <table id="logsTable">
+        <thead>
+        <tr>
+            <th>#</th>
+            <th>Algorithm</th>
+            <th>Key Size</th>
+            <th>Encryption Time</th>
+            <th>Message Size</th>
+            <th>Date</th>
+            <th>Action</th>
+        </tr>
+        </thead>
+        <tbody id="tableBody">
+        {% for exp in experiments %}
+        <tr data-algo="{{ exp.algorithm|upper }}"
+            data-time="{{ exp.encryption_time }}"
+            data-size="{{ exp.message_size }}"
+            data-date="{{ exp.created_at|date:'U' }}">
+
+            <td style="color:#4a6a9a;">{{ forloop.counter }}</td>
+
+            <!-- Algorithm badge -->
+            <td>
+                <span class="algo-badge badge-{{ exp.algorithm|upper }}">
+                    {{ exp.algorithm }}
+                </span>
+            </td>
+
+            <!-- Key size — show proper label for PQ algos -->
+            <td>
+                {% if exp.algorithm|upper == "KYBER" or exp.algorithm|upper == "DILITHIUM" %}
+                    <span style="color:#a0c8f0; font-size:12px;">PQ-fixed</span>
+                {% elif exp.algorithm|upper == "ECC" %}
+                    <span style="color:#a0c8f0;">{{ exp.key_size }}</span>
+                {% else %}
+                    {{ exp.key_size }} bits
+                {% endif %}
+            </td>
+
+            <!-- ✅ Formatted encryption time -->
+            <td>
+                <span class="time-chip">
+                    {% if exp.encryption_time == 0.0 %}
+                        &lt; 0.001 ms
+                    {% elif exp.encryption_time < 0.001 %}
+                        {{ exp.encryption_time|floatformat:8 }} s
+                    {% else %}
+                        {{ exp.encryption_time|floatformat:4 }} s
+                    {% endif %}
+                </span>
+            </td>
+
+            <td>{{ exp.message_size }} chars</td>
+
+            <td style="color:#7a9ac0; font-size:12px;">
+                {{ exp.created_at|date:"M d, Y · g:i a" }}
+            </td>
+
+            <!-- ✅ Delete button -->
+            <td>
+                <form method="POST" action="/analytics/delete/{{ exp.id }}/"
+                      onsubmit="return confirm('Delete this log entry?');"
+                      style="margin:0;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn-delete">🗑 Delete</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    <div id="no-results">No logs found for selected filter.</div>
+
+    {% else %}
+    <div class="empty-state">
+        📭 No experiments logged yet.<br>
+        <a href="/experiment/" style="color:#4cc9f0;">Run your first experiment →</a>
+    </div>
+    {% endif %}
+
+</div>
+
+
+<script>
+// Build stats bar
+function buildStats(rows) {
+    const counts = {};
+    rows.forEach(row => {
+        const algo = row.dataset.algo;
+        counts[algo] = (counts[algo] || 0) + 1;
+    });
+
+    const bar = document.getElementById('statsBar');
+    bar.innerHTML = `<div class="stat-pill">Total: <b>${rows.length}</b></div>` +
+        Object.entries(counts)
+            .map(([a,c]) => `<div class="stat-pill">${a}: <b>${c}</b></div>`)
+            .join('');
+}
+
+// Filter + sort table
+function filterTable() {
+    const algo   = document.getElementById('algoFilter').value;
+    const sortBy = document.getElementById('sortBy').value;
+    const tbody  = document.getElementById('tableBody');
+    const rows   = Array.from(tbody.querySelectorAll('tr'));
+
+    // Filter
+    const visible = rows.filter(row => {
+        const match = algo === 'ALL' || row.dataset.algo === algo ||
+                      row.dataset.algo.includes(algo);
+        row.style.display = match ? '' : 'none';
+        return match;
+    });
+
+    // Sort
+    visible.sort((a, b) => {
+        if (sortBy === 'time_desc') return parseFloat(b.dataset.time) - parseFloat(a.dataset.time);
+        if (sortBy === 'time_asc')  return parseFloat(a.dataset.time) - parseFloat(b.dataset.time);
+        if (sortBy === 'size_desc') return parseInt(b.dataset.size)   - parseInt(a.dataset.size);
+        return parseInt(b.dataset.date) - parseInt(a.dataset.date); // newest first
+    });
+
+    // Re-order DOM
+    visible.forEach(row => tbody.appendChild(row));
+
+    // Renumber visible rows
+    visible.forEach((row, i) => {
+        row.querySelector('td:first-child').textContent = i + 1;
+    });
+
+    // No results message
+    document.getElementById('no-results').style.display =
+        visible.length === 0 ? 'block' : 'none';
+
+    buildStats(visible);
+}
+
+// Init on load
+buildStats(Array.from(document.querySelectorAll('#tableBody tr')));
+</script>
+
+{% endblock %}
