@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+
+body {
+    background: #0b1736;
+    font-family: Arial;
+    color: white;
+    padding: 30px;
+}
+
+.experiment-card {
+    background: #142850;
+    padding: 30px;
+    border-radius: 10px;
+    width: 500px;
+}
+
+label {
+    font-weight: bold;
+    display: block;
+    margin-bottom: 6px;
+}
+
+select, input[type="number"] {
+    width: 100%;
+    padding: 10px;
+    margin-top: 4px;
+    margin-bottom: 20px;
+    border-radius: 5px;
+    border: none;
+    background: #0d1f3c;
+    color: white;
+    font-size: 14px;
+}
+
+select option {
+    background: #0d1f3c;
+}
+
+.info-box {
+    background: #0d1f3c;
+    border-left: 3px solid #4cc9f0;
+    padding: 10px 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    font-size: 13px;
+    color: #a0c8f0;
+}
+
+button {
+    background: #4cc9f0;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    font-weight: bold;
+    cursor: pointer;
+    color: black;
+    margin-top: 5px;
+}
+
+button:hover {
+    background: #3bb0d6;
+}
+
+</style>
+
+
+<h2>Run Cryptographic Experiment</h2>
+<p>Select an algorithm and configure its parameters.</p>
+
+<div class="experiment-card">
+<form method="POST" onsubmit="return validateForm()">
+{% csrf_token %}
+
+    <!-- Algorithm Selector -->
+    <label>Select Algorithm</label>
+    <select name="algorithm" id="algorithm" onchange="updateOptions()" required>
+        <option value="">-- Select --</option>
+        <option value="RSA">RSA</option>
+        <option value="ECC">ECC</option>
+        <option value="AES">AES</option>
+        <option value="KYBER">Kyber (Post-Quantum)</option>
+        <option value="DILITHIUM">Dilithium (Post-Quantum)</option>
+    </select>
+
+    <!-- ── RSA Options ── -->
+    <div id="rsa-options" style="display:none;">
+        <label>Key Size (bits)</label>
+        <input type="number" name="rsa_keysize" id="rsa_keysize"
+               placeholder="e.g. 2048" min="512" step="512">
+        <div class="info-box">
+            💡 Recommended: <b>2048</b> or <b>4096</b> bits for strong security.
+        </div>
+    </div>
+
+    <!-- ── ECC Options ── -->
+    <div id="ecc-options" style="display:none;">
+        <label>Select Curve</label>
+        <select name="curve" id="curve">
+            <option value="P-256">P-256 (NIST)</option>
+            <option value="secp256k1">secp256k1</option>
+        </select>
+        <div class="info-box">
+            💡 ECC uses elliptic curve key exchange (ECDH). The curve defines key strength.
+        </div>
+    </div>
+
+    <!-- ── AES Options ── -->
+    <div id="aes-options" style="display:none;">
+        <label>Key Size (bits)</label>
+        <select name="aes_keysize" id="aes_keysize">
+            <option value="128">128-bit (Fast, Good)</option>
+            <option value="192">192-bit (Balanced)</option>
+            <option value="256" selected>256-bit (Strongest ✅)</option>
+        </select>
+        <div class="info-box">
+            💡 AES uses a <b>symmetric secret key</b>. It does not use RSA key sizes.
+            Choose 128, 192, or 256 bits.
+        </div>
+    </div>
+
+    <!-- ── Post-Quantum Info ── -->
+    <div id="pq-options" style="display:none;">
+        <div class="info-box">
+            🔬 Post-Quantum algorithms use fixed internal parameters.
+            No manual key size needed.
+        </div>
+    </div>
+
+    <button type="submit">Generate Key →</button>
+
+</form>
+</div>
+
+
+<script>
+
+function updateOptions() {
+    const algo = document.getElementById("algorithm").value;
+
+    // Hide all option panels
+    ["rsa-options","ecc-options","aes-options","pq-options"].forEach(id => {
+        document.getElementById(id).style.display = "none";
+    });
+
+    if (algo === "RSA") {
+        document.getElementById("rsa-options").style.display = "block";
+    } else if (algo === "ECC") {
+        document.getElementById("ecc-options").style.display = "block";
+    } else if (algo === "AES") {
+        document.getElementById("aes-options").style.display = "block";
+    } else if (algo === "KYBER" || algo === "DILITHIUM") {
+        document.getElementById("pq-options").style.display = "block";
+    }
+}
+
+function validateForm() {
+    const algo = document.getElementById("algorithm").value;
+
+    if (!algo) {
+        alert("Please select an algorithm.");
+        return false;
+    }
+
+    if (algo === "RSA") {
+        const ks = document.getElementById("rsa_keysize").value;
+        if (!ks || parseInt(ks) < 512) {
+            alert("Please enter a valid RSA key size (minimum 512 bits).");
+            return false;
+        }
+    }
+
+    return true;
+}
+
+</script>
+
+{% endblock %}
