@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+body {
+    background: #0b1736;
+    font-family: Arial;
+    color: white;
+    padding: 30px;
+}
+
+.secure-box {
+    background: #142850;
+    padding: 30px;
+    border-radius: 10px;
+    width: 550px;
+}
+
+.algo-badge {
+    display: inline-block;
+    background: #1c3b70;
+    border: 1px solid #4cc9f0;
+    color: #4cc9f0;
+    padding: 4px 14px;
+    border-radius: 20px;
+    font-weight: bold;
+    font-size: 14px;
+    margin-left: 8px;
+}
+
+.key-info {
+    background: #0d1f3c;
+    border-left: 3px solid #4cc9f0;
+    padding: 8px 14px;
+    border-radius: 5px;
+    margin: 10px 0 18px 0;
+    font-size: 13px;
+    color: #a0c8f0;
+}
+
+.info-note {
+    background: #0d1f3c;
+    border-left: 3px solid #f0a04c;
+    padding: 10px 14px;
+    border-radius: 5px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    color: #f0c890;
+}
+
+textarea {
+    width: 100%;
+    padding: 10px;
+    border-radius: 5px;
+    background: #0d1f3c;
+    color: white;
+    border: 1px solid #2f4f8f;
+    font-size: 14px;
+    margin-top: 6px;
+    resize: vertical;
+}
+
+label {
+    font-weight: bold;
+    display: block;
+    margin-top: 10px;
+}
+
+button {
+    background: #4cc9f0;
+    padding: 10px 24px;
+    border: none;
+    border-radius: 5px;
+    font-weight: bold;
+    color: black;
+    cursor: pointer;
+    margin-top: 16px;
+}
+
+button:hover {
+    background: #3bb0d6;
+}
+</style>
+
+
+<h2>Secure Message Channel</h2>
+
+<div class="secure-box">
+
+    <!-- Algorithm -->
+    <p>
+        <b>Algorithm:</b>
+        <span class="algo-badge">{{ algorithm }}</span>
+    </p>
+
+    <!-- ✅ FIX: Smart key info label — no raw "bits" appended for PQ/ECC -->
+    <div class="key-info">
+        {% if algorithm == "RSA" %}
+            🔑 Key Size: {{ keysize }}
+        {% elif algorithm == "AES" %}
+            🔑 Key Size: {{ keysize }}
+        {% elif algorithm == "ECC" %}
+            📐 Curve: {{ keysize }}
+        {% elif algorithm == "KYBER" %}
+            🔬 Parameters: Kyber-768 (Post-Quantum, fixed)
+        {% elif algorithm == "DILITHIUM" %}
+            🔬 Parameters: Dilithium-3 (Post-Quantum, fixed)
+        {% else %}
+            🔑 Key Info: {{ keysize }}
+        {% endif %}
+    </div>
+
+    <!-- Algorithm-specific notes -->
+    {% if algorithm == "ECC" %}
+    <div class="info-note">
+        ⚡ ECC does not encrypt messages directly.<br>
+        A shared secret is derived via <b>ECDH</b> and used as an AES key internally.
+    </div>
+    <label>Enter Message (will be AES-encrypted after ECDH key exchange)</label>
+
+    {% elif algorithm == "KYBER" %}
+    <div class="info-note">
+        🔬 Kyber is a <b>Key Encapsulation Mechanism (KEM)</b> — it doesn't sign or encrypt messages directly.<br>
+        This simulation generates a shared secret for educational purposes.
+    </div>
+    <label>Enter Message (used to simulate KEM context)</label>
+
+    {% elif algorithm == "DILITHIUM" %}
+    <div class="info-note">
+        ✍️ Dilithium is a <b>digital signature</b> algorithm — it signs your message, not encrypts it.<br>
+        The signature proves authenticity and integrity.
+    </div>
+    <label>Enter Message to Sign</label>
+
+    {% else %}
+    <label>Enter Message</label>
+    {% endif %}
+
+    <form method="POST" action="/secure/">
+        {% csrf_token %}
+        <input type="hidden" name="algorithm" value="{{ algorithm }}">
+        <input type="hidden" name="keysize"   value="{{ keysize }}">
+
+        <textarea name="message" rows="4" placeholder="Type your message here..." required></textarea>
+
+        <button type="submit">
+            {% if algorithm == "DILITHIUM" %}✍️ Sign Message
+            {% elif algorithm == "KYBER" %}🔬 Run KEM
+            {% else %}🔒 Encrypt
+            {% endif %}
+        </button>
+    </form>
+
+</div>
+
+{% endblock %}
